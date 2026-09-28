@@ -652,16 +652,26 @@ HOLDINGS_PAGE_HTML = """<!DOCTYPE html>
           `;
         } else {
           countEl.innerText = selectedExhaustedIds.size;
-          let totalQty = 0, totalGain = 0;
+          let totalQty = 0, totalGain = 0, totalBuyCost = 0, totalSellAmt = 0;
           selectedExhaustedIds.forEach(id => {
             const l = EXHAUSTED_LOTS.find(item => item.id === id);
             if (!l) return;
             totalQty += l.soldQty;
             totalGain += l.netGain;
+            totalBuyCost += (l.soldQty * l.buyPrice);
+            totalSellAmt += (l.soldQty * l.realizedSellPrice);
           });
+          const avgBuyPrice = totalQty > 0 ? totalBuyCost / totalQty : 0;
+          const avgSellPrice = totalQty > 0 ? totalSellAmt / totalQty : 0;
           container.innerHTML = `
             <div class="px-2 py-0.5 rounded bg-slate-800 border border-slate-700">
               <span class="text-slate-400">Qty:</span> <span class="font-bold text-slate-200">${totalQty.toLocaleString()}</span>
+            </div>
+            <div class="px-2 py-0.5 rounded bg-indigo-950/60 border border-indigo-800/40">
+              <span class="text-indigo-400">Buy Avg:</span> <span class="font-bold text-indigo-300">₹${avgBuyPrice.toFixed(2)}</span>
+            </div>
+            <div class="px-2 py-0.5 rounded bg-amber-950/60 border border-amber-800/40">
+              <span class="text-amber-400">Sell Avg:</span> <span class="font-bold text-amber-300">₹${avgSellPrice.toFixed(2)}</span>
             </div>
             <div class="px-2 py-0.5 rounded border ${totalGain >= 0 ? 'bg-emerald-950/60 border-emerald-700/50 text-emerald-300' : 'bg-rose-950/60 border-rose-700/50 text-rose-300'} font-bold">
               P&L: ${totalGain >= 0 ? '+₹' : '-₹'}${Math.abs(totalGain).toLocaleString('en-IN', {maximumFractionDigits: 2})}
