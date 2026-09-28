@@ -825,7 +825,7 @@ def fetch_mtf_data():
 
 @mtf_bp.route("/mtf")
 def view_mtf():
-    return render_template_string(MTF_PAGE_HTML, active_page="mtf", session_token_short=get_short_token())
+    return render_template_string(MTF_PAGE_HTML, active_page="mtf")
 
 @mtf_bp.route("/api/mtf")
 def api_mtf():

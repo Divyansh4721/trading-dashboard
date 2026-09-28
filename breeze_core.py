@@ -232,7 +232,6 @@ NAVBAR_HTML = """
       <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
       <span id="syncStatusLabel">Live</span>
     </div>
-    <span class="font-mono text-slate-400 text-[11px]">{{ session_token_short }}</span>
     <a href="/login" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-2 py-0.5 rounded border border-slate-700">Token</a>
     <button onclick="refreshData(true)" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-2 py-0.5 rounded border border-slate-700">Refresh</button>
     <button onclick="lockApp()" class="bg-rose-950/60 hover:bg-rose-900 border border-rose-800 text-rose-300 px-2 py-0.5 rounded" title="Lock App">Lock</button>

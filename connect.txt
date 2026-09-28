@@ -1,0 +1,1 @@
+ssh -i "C:\Users\divya\Downloads\keys\Azurekey2.pem" -t root@13.232.66.132 "cd /var/www/stocks && exec bash -l"

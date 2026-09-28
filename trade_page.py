@@ -966,7 +966,7 @@ def _get_orders_data(breeze, positions_cached=None):
 
 @trade_bp.route("/trade")
 def view_trade():
-    return render_template_string(TRADE_PAGE_HTML, active_page="trade", session_token_short=get_short_token())
+    return render_template_string(TRADE_PAGE_HTML, active_page="trade")
 
 @trade_bp.route("/api/trade_bootstrap")
 def api_trade_bootstrap():

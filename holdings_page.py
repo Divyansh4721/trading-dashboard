@@ -1006,7 +1006,7 @@ def fetch_holdings_trades():
 
 @holdings_bp.route("/holdings")
 def view_holdings():
-    return render_template_string(HOLDINGS_PAGE_HTML, active_page="holdings", session_token_short=get_short_token())
+    return render_template_string(HOLDINGS_PAGE_HTML, active_page="holdings")
 
 @holdings_bp.route("/api/holdings")
 def api_holdings():
