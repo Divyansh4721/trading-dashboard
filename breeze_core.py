@@ -219,6 +219,9 @@ NAVBAR_HTML = """
       <a href="/holdings" class="px-3 py-1 rounded {% if active_page == 'holdings' %}bg-blue-600 text-white font-bold{% else %}text-slate-300 hover:bg-slate-800{% endif %}">
         Inventory
       </a>
+      <a href="/delivery" class="px-3 py-1 rounded {% if active_page == 'delivery' %}bg-indigo-600 text-white font-bold{% else %}text-slate-300 hover:bg-slate-800{% endif %}">
+        Delivery
+      </a>
       <a href="/mtf" class="px-3 py-1 rounded {% if active_page == 'mtf' %}bg-indigo-600 text-white font-bold{% else %}text-slate-300 hover:bg-slate-800{% endif %}">
         MTF Audit
       </a>

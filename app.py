@@ -5,6 +5,7 @@ from breeze_core import LOGIN_URL, get_breeze_client, save_session_token
 from holdings_page import holdings_bp
 from mtf_page import mtf_bp
 from trade_page import trade_bp
+from delivery_page import delivery_bp
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24).hex()
@@ -18,6 +19,7 @@ APP_PASSWORD = "Divyansh@123"
 app.register_blueprint(holdings_bp)
 app.register_blueprint(mtf_bp)
 app.register_blueprint(trade_bp)
+app.register_blueprint(delivery_bp)
 
 UNLOCK_PAGE_HTML = """<!DOCTYPE html>
 <html lang="en">

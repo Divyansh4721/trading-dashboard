@@ -1,7 +1,9 @@
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
 from flask import Blueprint, jsonify, render_template_string, request
 from breeze_core import (
     COMPANY_NAMES_CACHE,
+    FROM_DATE,
     NAVBAR_HTML,
     clear_memory_cache,
     get_breeze_client,
@@ -17,7 +19,7 @@ TRADE_PAGE_HTML = """<!DOCTYPE html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Trade Terminal - Holdings, Orders & GTT</title>
+  <title>Trade Terminal - Holdings, Orders & History</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -63,24 +65,21 @@ TRADE_PAGE_HTML = """<!DOCTYPE html>
             <div class="font-bold text-emerald-400" id="portfolioCashVal">₹0.00</div>
           </div>
         </div>
-      </div>
-
+      </div> 
       <!-- TITLE BAR -->
       <div class="px-3 py-2 border-b border-slate-200 bg-slate-50 flex items-center justify-between text-xs font-bold text-slate-700">
         <span class="flex items-center gap-1.5 text-blue-700">
           <span class="material-icons text-sm">pie_chart</span> Active Holdings
         </span>
         <span id="holdingsCountBadge" class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-blue-100 text-blue-800">0</span>
-      </div>
-
+      </div> 
       <!-- SEARCH & SORT BAR -->
       <div class="p-2.5 border-b border-slate-200 bg-white space-y-2">
         <div class="relative">
           <span class="material-icons absolute left-2.5 top-2 text-slate-400 text-base">search</span>
           <input type="text" id="symbolSearchInput" onkeyup="filterList()" placeholder="Search ticker or company name..." 
             class="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-blue-500 font-semibold">
-        </div>
-
+        </div> 
         <!-- SORT CONTROLS -->
         <div class="flex items-center justify-between text-[11px] text-slate-500 pt-0.5">
           <div class="flex items-center gap-1 font-semibold">
@@ -93,18 +92,15 @@ TRADE_PAGE_HTML = """<!DOCTYPE html>
               <option value="stock_code">Symbol (A-Z)</option>
               <option value="company_name">Company Name (A-Z)</option>
             </select>
-          </div>
-
+          </div> 
           <button id="sortOrderBtn" onclick="toggleSortOrder()" class="flex items-center gap-0.5 px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 font-bold text-slate-700 transition">
             <span id="sortOrderIcon" class="material-icons text-xs">arrow_downward</span>
             <span id="sortOrderLabel">High → Low</span>
           </button>
         </div>
-      </div>
-
+      </div> 
       <!-- LIST SCROLL CONTAINER -->
-      <div id="sideListContainer" class="flex-1 overflow-y-auto p-2 space-y-1.5 custom-scrollbar"></div>
-
+      <div id="sideListContainer" class="flex-1 overflow-y-auto p-2 space-y-1.5 custom-scrollbar"></div> 
       <!-- FOOTER REFRESH BAR -->
       <div class="p-2 border-t border-slate-200 bg-slate-50 text-[11px] font-semibold text-slate-500 flex justify-between items-center">
         <span>Click holding to load terminal</span>
@@ -112,8 +108,7 @@ TRADE_PAGE_HTML = """<!DOCTYPE html>
           <span class="material-icons text-xs">sync</span> Refresh
         </button>
       </div>
-    </aside>
-
+    </aside> 
     <!-- CENTER PANEL: ORDER PAD -->
     <main class="flex-1 flex flex-col items-center justify-center p-4 bg-slate-50 overflow-y-auto">
       <div class="w-full max-w-sm md:max-w-md bg-white rounded-xl shadow-lg border border-slate-200 flex flex-col overflow-hidden">
@@ -129,17 +124,16 @@ TRADE_PAGE_HTML = """<!DOCTYPE html>
                 </span>
               </div>
               <div id="modalCompanyName" class="text-xs text-slate-500 font-medium truncate max-w-[280px]">--</div>
-              <div class="flex items-center gap-3 mt-1.5 text-xs font-semibold text-slate-500">
+              <div class="flex items-center gap-2 mt-1.5 text-xs font-semibold text-slate-500">
                 <span>NSE: ₹<span id="nsePrice" class="text-slate-800 font-bold">0.00</span></span>
-                <span id="nseChange" class="font-bold text-slate-500">0.00%</span>
+                <span id="nseChange" class="font-bold text-slate-500">0.00 (0.00%)</span>
               </div>
             </div>
             
             <button onclick="fetchQuote()" title="Refresh Live Quote" class="text-slate-400 hover:text-slate-700 p-1.5 rounded hover:bg-slate-100 transition">
               <span id="syncIcon" class="material-icons text-base">sync</span>
             </button>
-          </div>
-
+          </div> 
           <!-- ACTIVE HOLDING SUMMARY BANNER -->
           <div id="holdingMetaSummary" class="hidden mt-3 p-2.5 bg-slate-50 rounded-lg border border-slate-200 grid grid-cols-3 text-center text-xs">
             <div>
@@ -155,18 +149,16 @@ TRADE_PAGE_HTML = """<!DOCTYPE html>
               <div class="font-bold" id="metaHoldingPnl">₹0.00</div>
             </div>
           </div>
-        </div>
-
+        </div> 
         <!-- BUY / SELL BUTTONS -->
         <div class="flex border-b border-slate-200 text-xs font-bold">
           <button id="btnActionBuy" onclick="setAction('BUY')" class="flex-1 py-3 text-center border-b-2 border-emerald-500 text-emerald-600 transition">
-            BUY MORE
+            BUY
           </button>
           <button id="btnActionSell" onclick="setAction('SELL')" class="flex-1 py-3 text-center border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition">
-            SELL / SQUARE-OFF
+            SELL
           </button>
-        </div>
-
+        </div> 
         <!-- FORM -->
         <div class="p-5 space-y-4">
           <div>
@@ -182,8 +174,7 @@ TRADE_PAGE_HTML = """<!DOCTYPE html>
                 Intraday
               </button>
             </div>
-          </div>
-
+          </div> 
           <div class="grid grid-cols-2 gap-3">
             <div>
               <div class="flex items-center justify-between text-xs mb-1">
@@ -194,8 +185,7 @@ TRADE_PAGE_HTML = """<!DOCTYPE html>
               </div>
               <input type="number" id="inputQty" value="1" min="1" oninput="recalcOrderRequirement()" 
                 class="w-full border border-slate-300 rounded-lg p-2 text-right font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
-            </div>
-
+            </div> 
             <div>
               <div class="flex items-center justify-between text-xs mb-1">
                 <span class="font-bold text-slate-700">Order Price</span>
@@ -204,11 +194,10 @@ TRADE_PAGE_HTML = """<!DOCTYPE html>
                   <option value="LIMIT">LIMIT</option>
                 </select>
               </div>
-              <input type="number" id="inputPrice" step="0.05" disabled placeholder="Market" oninput="recalcOrderRequirement()" 
+              <input type="number" id="inputPrice" step="0.05" disabled placeholder="At Market" oninput="recalcOrderRequirement()" 
                 class="w-full border border-slate-300 rounded-lg p-2 text-right font-bold text-slate-400 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
-          </div>
-
+          </div> 
           <div class="p-3 bg-slate-50 rounded-lg border border-slate-100 flex items-center justify-between text-xs">
             <div>
               <span class="text-slate-400">Order Value:</span>
@@ -218,58 +207,49 @@ TRADE_PAGE_HTML = """<!DOCTYPE html>
               <span class="text-slate-400">Available Cash:</span>
               <div class="font-bold text-slate-700" id="userFundsSecondary">₹0.00</div>
             </div>
-          </div>
-
+          </div> 
           <button id="btnSubmitOrder" onclick="executeOrder()" class="w-full py-3 rounded-lg font-bold text-sm text-white bg-emerald-600 hover:bg-emerald-700 shadow transition active:scale-[0.98]">
             Submit Buy Order
-          </button>
-
+          </button> 
           <div id="orderStatusMsg" class="hidden text-center text-xs font-semibold py-2 px-3 rounded-lg transition"></div>
         </div>
       </div>
-    </main>
-
-    <!-- RIGHT PANEL: EXISTING ORDERS, TRIGGERS & GTT -->
+    </main> 
+    <!-- RIGHT PANEL: EXISTING ORDERS, TRIGGERS & LAST 50 ORDER HISTORY -->
     <aside class="w-80 md:w-96 bg-white border-l border-slate-200 flex flex-col h-full shrink-0 shadow-sm z-10">
       
       <div class="p-3.5 border-b border-slate-200 bg-slate-50">
         <div class="flex justify-between items-center mb-2">
           <div class="flex items-center gap-1.5">
-            <span class="material-icons text-blue-600 text-base">alt_route</span>
-            <span class="font-black text-xs text-slate-800 tracking-tight">Order Book & Triggers</span>
+            <span class="material-icons text-blue-600 text-base">manage_history</span>
+            <span class="font-black text-xs text-slate-800 tracking-tight" id="rightPanelTitle">Stock Order History</span>
           </div>
-          <span id="ordersCountBadge" class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-blue-100 text-blue-700">0 Orders</span>
-        </div>
-
+          <span id="ordersCountBadge" class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-blue-100 text-blue-700">0 Found</span>
+        </div> 
         <div class="flex items-center gap-1 p-0.5 bg-slate-200 rounded text-[11px] font-bold">
           <button id="scopeStockBtn" onclick="setOrderScope('stock')" class="flex-1 py-1 rounded bg-white text-slate-900 shadow-xs transition">
-            <span id="scopeStockName">--</span> Only
+            <span id="scopeStockName">--</span> (Last 50)
           </button>
           <button id="scopeAllBtn" onclick="setOrderScope('all')" class="flex-1 py-1 rounded text-slate-600 hover:text-slate-900 transition">
-            All Scrips
+            All Today
           </button>
+        </div> 
+        <div class="flex items-center gap-1 mt-2 text-[10px] font-bold overflow-x-auto pb-0.5">
+          <button id="filterAllBtn" onclick="setOrderFilter('ALL')" class="px-2 py-0.5 rounded-full bg-slate-900 text-white transition shrink-0">All</button>
+          <button id="filterExecutedBtn" onclick="setOrderFilter('EXECUTED')" class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition shrink-0">Filled / History</button>
+          <button id="filterPendingBtn" onclick="setOrderFilter('PENDING')" class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition shrink-0">Open / Pending</button>
+          <button id="filterTriggerBtn" onclick="setOrderFilter('GTT')" class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition shrink-0">GTT / SL</button>
         </div>
-
-        <div class="flex items-center gap-1 mt-2 text-[10px] font-bold">
-          <button id="filterAllBtn" onclick="setOrderFilter('ALL')" class="px-2 py-0.5 rounded-full bg-slate-900 text-white transition">All</button>
-          <button id="filterTriggerBtn" onclick="setOrderFilter('GTT')" class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition">GTT / Triggers</button>
-          <button id="filterPendingBtn" onclick="setOrderFilter('PENDING')" class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition">Open / Pending</button>
-          <button id="filterExecutedBtn" onclick="setOrderFilter('EXECUTED')" class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition">Executed</button>
-        </div>
-      </div>
-
-      <div id="stockOrdersContainer" class="flex-1 overflow-y-auto p-2.5 space-y-2 custom-scrollbar"></div>
-
+      </div> 
+      <div id="stockOrdersContainer" class="flex-1 overflow-y-auto p-2.5 space-y-2 custom-scrollbar"></div> 
       <div class="p-2 border-t border-slate-200 bg-slate-50 text-[11px] font-semibold text-slate-500 flex justify-between items-center">
-        <span class="text-[10px] text-slate-400">Syncs GTT, SL, Day Orders</span>
-        <button onclick="loadOrders()" title="Refresh Orders" class="flex items-center gap-1 px-2 py-1 hover:bg-slate-200 rounded text-slate-700 transition">
-          <span class="material-icons text-xs">sync</span> Sync Orders
+        <span class="text-[10px] text-slate-400" id="historyMetaNote">Last 50 trades & open orders</span>
+        <button onclick="fetchStockHistory(selectedStock)" title="Reload Stock Orders" class="flex items-center gap-1 px-2 py-1 hover:bg-slate-200 rounded text-slate-700 transition">
+          <span id="rightSyncIcon" class="material-icons text-xs">sync</span> Refresh
         </button>
       </div>
-    </aside>
-
-  </div>
-
+    </aside> 
+  </div> 
   <script>
     let currentAction = 'BUY';
     let currentProduct = 'mtf';
@@ -277,79 +257,84 @@ TRADE_PAGE_HTML = """<!DOCTYPE html>
     let currentLTP = 0.00;
     let availableDeliveryQty = 0;
     let availableMtfQty = 0;
-    let availableFunds = 0.00;
-
+    let availableFunds = 0.00; 
     let currentSortParam = 'total_current';
-    let isSortDesc = true;
-
+    let isSortDesc = true; 
     let orderScope = 'stock';
-    let orderFilter = 'ALL';
-
+    let orderFilter = 'ALL'; 
     let USER_HOLDINGS = [];
     let ALL_ORDERS = [];
-    let isPolling = false;
+    let STOCK_HISTORY = [];
+    let isPolling = false; 
 
     async function initOrderPad(force = false) {
       if (isPolling) return;
       isPolling = true;
       try {
         const res = await fetch('/api/trade_bootstrap' + (force ? '?force=1' : ''));
-        const d = await res.json();
-
+        const d = await res.json(); 
         availableFunds = Number(d.funds?.balance) || 0;
         const fmt = '₹' + availableFunds.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
         document.getElementById('portfolioCashVal').innerText = fmt;
-        document.getElementById('userFundsSecondary').innerText = fmt;
-
+        document.getElementById('userFundsSecondary').innerText = fmt; 
         USER_HOLDINGS = Array.isArray(d.holdings) ? d.holdings : [];
-        updateHoldingsKPIs();
-
+        updateHoldingsKPIs(); 
         ALL_ORDERS = Array.isArray(d.orders) ? d.orders : [];
-        renderStockOrders();
-        renderCurrentList();
-
-        const syncEl = document.getElementById('syncStatusLabel');
-        if (syncEl) syncEl.innerText = new Date().toLocaleTimeString();
-
+        renderCurrentList(); 
+        
         if (!selectedStock && USER_HOLDINGS.length > 0) {
           selectTradeStock(USER_HOLDINGS[0].stock_code);
         } else if (selectedStock) {
           updateSelectedStockDetails();
+          renderStockOrders();
         }
       } catch (err) {
         console.error("Bootstrap fetch failed:", err);
       } finally {
         isPolling = false;
       }
+    } 
+
+    async function fetchStockHistory(sym) {
+      if (!sym) return;
+      const refIcon = document.getElementById('rightSyncIcon');
+      if (refIcon) refIcon.classList.add('spin');
+      try {
+        const res = await fetch(`/api/stock_history?stock_code=${encodeURIComponent(sym)}`);
+        const d = await res.json();
+        STOCK_HISTORY = Array.isArray(d.history) ? d.history : [];
+        renderStockOrders();
+      } catch (e) {
+        console.error("History fetch error:", e);
+      } finally {
+        if (refIcon) refIcon.classList.remove('spin');
+      }
     }
 
     function updateHoldingsKPIs() {
-      document.getElementById('holdingsCountBadge').innerText = USER_HOLDINGS.length;
-
+      document.getElementById('holdingsCountBadge').innerText = USER_HOLDINGS.length; 
       let totInvested = 0, totCurrent = 0, totPnl = 0;
       USER_HOLDINGS.forEach(h => {
         totInvested += Number(h.total_invested || 0);
         totCurrent += Number(h.total_current || 0);
         totPnl += Number(h.pnl || 0);
-      });
-
+      }); 
       document.getElementById('portfolioCurrentVal').innerText = '₹' + totCurrent.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
       document.getElementById('portfolioInvestedVal').innerText = '₹' + totInvested.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
       
       const pnlEl = document.getElementById('portfolioTotalPnl');
       pnlEl.innerText = (totPnl >= 0 ? '+₹' : '-₹') + Math.abs(totPnl).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-      pnlEl.className = 'font-bold ' + (totPnl >= 0 ? 'text-emerald-400' : 'text-rose-400');
-
+      pnlEl.className = 'font-bold ' + (totPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'); 
       const totPnlPct = totInvested > 0 ? (totPnl / totInvested * 100) : 0;
       const badge = document.getElementById('headerPnlBadge');
       badge.innerText = (totPnlPct >= 0 ? '+' : '') + totPnlPct.toFixed(2) + '%';
       badge.className = 'text-xs px-2 py-0.5 rounded font-black ' + (totPnlPct >= 0 ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300');
-    }
+    } 
 
     function changeSortParam() {
       currentSortParam = document.getElementById('sortParamSelect').value;
       renderCurrentList();
-    }
+    } 
 
     function toggleSortOrder() {
       isSortDesc = !isSortDesc;
@@ -363,7 +348,7 @@ TRADE_PAGE_HTML = """<!DOCTYPE html>
         label.innerText = 'Low → High';
       }
       renderCurrentList();
-    }
+    } 
 
     function setOrderScope(scope) {
       orderScope = scope;
@@ -372,37 +357,37 @@ TRADE_PAGE_HTML = """<!DOCTYPE html>
       if (scope === 'stock') {
         stockBtn.className = 'flex-1 py-1 rounded bg-white text-slate-900 shadow-xs transition';
         allBtn.className = 'flex-1 py-1 rounded text-slate-600 hover:text-slate-900 transition';
+        document.getElementById('rightPanelTitle').innerText = (selectedStock || '--') + ' Last 50 Orders';
       } else {
         allBtn.className = 'flex-1 py-1 rounded bg-white text-slate-900 shadow-xs transition';
         stockBtn.className = 'flex-1 py-1 rounded text-slate-600 hover:text-slate-900 transition';
+        document.getElementById('rightPanelTitle').innerText = 'All Orders (Today)';
       }
       renderStockOrders();
-    }
+    } 
 
     function setOrderFilter(filter) {
       orderFilter = filter;
       ['ALL', 'GTT', 'PENDING', 'EXECUTED'].forEach(f => {
         const btn = document.getElementById('filter' + f.charAt(0) + f.slice(1).toLowerCase() + 'Btn');
         if (btn) {
-          if (f === filter) btn.className = 'px-2 py-0.5 rounded-full bg-slate-900 text-white transition';
-          else btn.className = 'px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition';
+          if (f === filter) btn.className = 'px-2 py-0.5 rounded-full bg-slate-900 text-white transition shrink-0';
+          else btn.className = 'px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition shrink-0';
         }
       });
       renderStockOrders();
-    }
+    } 
 
     function renderCurrentList() {
       const q = document.getElementById('symbolSearchInput').value.trim().toUpperCase();
-      const container = document.getElementById('sideListContainer');
-
+      const container = document.getElementById('sideListContainer'); 
       let list = [...USER_HOLDINGS];
       if (q) {
         list = list.filter(h => 
           (h.stock_code || '').toUpperCase().includes(q) || 
           (h.company_name || '').toUpperCase().includes(q)
         );
-      }
-
+      } 
       list.sort((a, b) => {
         let valA = a[currentSortParam];
         let valB = b[currentSortParam];
@@ -412,13 +397,11 @@ TRADE_PAGE_HTML = """<!DOCTYPE html>
         valA = Number(valA) || 0;
         valB = Number(valB) || 0;
         return isSortDesc ? (valB - valA) : (valA - valB);
-      });
-
+      }); 
       if (list.length === 0) {
         container.innerHTML = `<div class="p-6 text-center text-xs text-slate-400">No holdings found matching "${q}".</div>`;
         return;
-      }
-
+      } 
       container.innerHTML = list.map(h => {
         const sym = h.stock_code;
         const compName = h.company_name || sym;
@@ -429,12 +412,7 @@ TRADE_PAGE_HTML = """<!DOCTYPE html>
         const pnl = Number(h.pnl) || 0;
         const pnlPct = Number(h.pnl_pct) || 0;
         const isProfit = pnl >= 0;
-        const curVal = Number(h.total_current) || (qty * ltp);
-
-        const stockOrders = ALL_ORDERS.filter(o => o.stock_code === sym);
-        const triggersCount = stockOrders.filter(o => o.is_trigger).length;
-        const pendingCount = stockOrders.filter(o => !o.is_trigger && (o.status || '').toLowerCase().includes('request')).length;
-
+        const curVal = Number(h.total_current) || (qty * ltp); 
         return `
           <div onclick="selectTradeStock('${sym}')" 
             class="w-full text-left p-3 rounded-lg border text-xs cursor-pointer transition flex flex-col gap-1.5 ${
@@ -447,8 +425,6 @@ TRADE_PAGE_HTML = """<!DOCTYPE html>
                   <span class="text-[9px] px-1.5 py-0.5 rounded font-bold bg-amber-100 text-amber-800">
                     MTF (${h.lots_count} lots)
                   </span>
-                  ${triggersCount > 0 ? `<span class="text-[9px] px-1.5 py-0.2 rounded font-black bg-purple-100 text-purple-700">${triggersCount} GTT</span>` : ''}
-                  ${pendingCount > 0 ? `<span class="text-[9px] px-1.5 py-0.2 rounded font-black bg-blue-100 text-blue-700 animate-pulse">${pendingCount} OPEN</span>` : ''}
                 </div>
                 <div class="text-[10px] text-slate-500 font-medium truncate mt-0.5 max-w-[200px]">${compName}</div>
               </div>
@@ -457,13 +433,11 @@ TRADE_PAGE_HTML = """<!DOCTYPE html>
                   ${isProfit ? '+' : ''}${pnlPct.toFixed(2)}%
                 </span>
               </div>
-            </div>
-
+            </div> 
             <div class="flex justify-between items-center text-[11px] text-slate-500">
               <span>Qty: <b class="text-slate-800">${qty}</b> @ ₹${avgPrice.toFixed(2)}</span>
               <span>LTP: <b class="text-slate-900">₹${ltp.toFixed(2)}</b></span>
-            </div>
-
+            </div> 
             <div class="flex justify-between items-center pt-1 border-t border-slate-100 text-[10px]">
               <span class="text-slate-400">Val: <b class="text-slate-700">₹${curVal.toLocaleString('en-IN', {maximumFractionDigits: 0})}</b></span>
               <span class="font-bold ${isProfit ? 'text-emerald-600' : 'text-rose-600'}">
@@ -473,40 +447,39 @@ TRADE_PAGE_HTML = """<!DOCTYPE html>
           </div>
         `;
       }).join('');
-    }
+    } 
 
     function renderStockOrders() {
       const container = document.getElementById('stockOrdersContainer');
       const countBadge = document.getElementById('ordersCountBadge');
-      const scopeLabel = document.getElementById('scopeStockName');
+      const scopeLabel = document.getElementById('scopeStockName'); 
+      scopeLabel.innerText = selectedStock || '--'; 
 
-      scopeLabel.innerText = selectedStock || '--';
-
-      let list = [...ALL_ORDERS];
-
-      if (orderScope === 'stock' && selectedStock) {
-        list = list.filter(o => o.stock_code === selectedStock);
+      let list = [];
+      if (orderScope === 'stock') {
+        list = [...STOCK_HISTORY];
+      } else {
+        list = [...ALL_ORDERS];
       }
 
       if (orderFilter === 'GTT') {
         list = list.filter(o => o.is_trigger);
       } else if (orderFilter === 'PENDING') {
-        list = list.filter(o => !o.is_trigger && (o.status || '').toLowerCase().includes('request'));
+        list = list.filter(o => !o.is_trigger && ((o.status || '').toLowerCase().includes('order') || (o.status || '').toLowerCase().includes('request') || (o.status || '').toLowerCase().includes('pending')));
       } else if (orderFilter === 'EXECUTED') {
-        list = list.filter(o => (o.status || '').toLowerCase().includes('exec') || (o.status || '').toLowerCase().includes('complete'));
-      }
+        list = list.filter(o => (o.status || '').toLowerCase().includes('exec') || (o.status || '').toLowerCase().includes('complete') || o.is_history);
+      } 
 
-      countBadge.innerText = `${list.length} Order${list.length === 1 ? '' : 's'}`;
-
+      countBadge.innerText = `${list.length} Shown`; 
       if (list.length === 0) {
         container.innerHTML = `
           <div class="p-6 text-center text-xs text-slate-400 flex flex-col items-center justify-center gap-1">
             <span class="material-icons text-slate-300 text-3xl">inbox</span>
-            <span>No orders match this filter.</span>
+            <span>No order history found for this filter.</span>
           </div>
         `;
         return;
-      }
+      } 
 
       container.innerHTML = list.map(o => {
         const isBuy = (o.action || '').toUpperCase() === 'BUY';
@@ -515,7 +488,9 @@ TRADE_PAGE_HTML = """<!DOCTYPE html>
         let statusBadge = 'bg-slate-100 text-slate-600';
         if (st.includes('exec') || st.includes('complete')) statusBadge = 'bg-emerald-100 text-emerald-800';
         else if (st.includes('cancel') || st.includes('reject')) statusBadge = 'bg-rose-100 text-rose-800';
-        else if (st.includes('request') || st.includes('ordered') || st.includes('pending')) statusBadge = 'bg-blue-100 text-blue-800 animate-pulse';
+        else if (st.includes('order') || st.includes('request') || st.includes('pending')) statusBadge = 'bg-blue-100 text-blue-800 animate-pulse'; 
+        
+        const effectivePrice = Number(o.average_price || o.price || 0);
 
         return `
           <div class="p-3 rounded-xl border border-slate-200 bg-white hover:border-slate-300 shadow-2xs flex flex-col gap-1.5 transition">
@@ -527,7 +502,7 @@ TRADE_PAGE_HTML = """<!DOCTYPE html>
                     ${o.action.toUpperCase()}
                   </span>
                   <span class="text-[9px] px-1.5 py-0.2 rounded font-bold ${o.is_trigger ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-600'}">
-                    ${o.order_tag}
+                    ${o.order_tag || (o.is_history ? 'FILLED' : 'REGULAR')}
                   </span>
                 </div>
                 ${o.company_name ? `<div class="text-[10px] text-slate-400 font-medium truncate max-w-[180px]">${o.company_name}</div>` : ''}
@@ -535,17 +510,15 @@ TRADE_PAGE_HTML = """<!DOCTYPE html>
               <span class="text-[10px] px-2 py-0.5 rounded-full font-bold ${statusBadge}">
                 ${o.status.toUpperCase()}
               </span>
-            </div>
-
+            </div> 
             <div class="flex justify-between items-center text-[11px] text-slate-600">
               <div>
                 <span>Qty: <b class="text-slate-900">${o.quantity}</b></span>
                 <span class="text-slate-400 mx-1">•</span>
-                <span>Price: <b class="text-slate-900">₹${Number(o.price || 0).toFixed(2)}</b></span>
+                <span>${st.includes('exec') ? 'Traded' : 'Price'}: <b class="text-slate-900">₹${effectivePrice.toFixed(2)}</b></span>
               </div>
-              <span class="text-[10px] text-slate-400">${o.product}</span>
-            </div>
-
+              <span class="text-[10px] text-slate-400 font-semibold uppercase">${o.product}</span>
+            </div> 
             ${o.is_trigger ? `
               <div class="flex justify-between items-center px-2 py-1 bg-purple-50 rounded border border-purple-100 text-[10px] text-purple-800">
                 <span class="font-bold flex items-center gap-1">
@@ -553,20 +526,19 @@ TRADE_PAGE_HTML = """<!DOCTYPE html>
                 </span>
                 <span class="font-extrabold">₹${Number(o.trigger_price || 0).toFixed(2)}</span>
               </div>
-            ` : ''}
-
-            <div class="flex justify-between items-center text-[9px] text-slate-400 pt-1 border-t border-slate-50">
+            ` : ''} 
+            <div class="flex justify-between items-center text-[9px] text-slate-400 pt-1 border-t border-slate-50 font-mono">
               <span>ID: ${o.order_id}</span>
               <span>${o.order_date || ''}</span>
             </div>
           </div>
         `;
       }).join('');
-    }
+    } 
 
     function filterList() {
       renderCurrentList();
-    }
+    } 
 
     function updateSelectedStockDetails() {
       if (!selectedStock) return;
@@ -574,8 +546,7 @@ TRADE_PAGE_HTML = """<!DOCTYPE html>
       const badge = document.getElementById('holdingBadge');
       const meta = document.getElementById('holdingMetaSummary');
       const availBadge = document.getElementById('availQtyBadge');
-      const compNameEl = document.getElementById('modalCompanyName');
-
+      const compNameEl = document.getElementById('modalCompanyName'); 
       if (holding) {
         compNameEl.innerText = holding.company_name || selectedStock;
         badge.classList.remove('hidden');
@@ -586,8 +557,7 @@ TRADE_PAGE_HTML = """<!DOCTYPE html>
         const pnlEl = document.getElementById('metaHoldingPnl');
         const pnl = Number(holding.pnl || 0);
         pnlEl.innerText = (pnl >= 0 ? '+₹' : '-₹') + Math.abs(pnl).toFixed(2);
-        pnlEl.className = 'font-bold ' + (pnl >= 0 ? 'text-emerald-600' : 'text-rose-600');
-
+        pnlEl.className = 'font-bold ' + (pnl >= 0 ? 'text-emerald-600' : 'text-rose-600'); 
         if (holding.ltp > 0 && currentLTP === 0) {
           currentLTP = Number(holding.ltp);
           document.getElementById('nsePrice').innerText = currentLTP.toFixed(2);
@@ -597,29 +567,31 @@ TRADE_PAGE_HTML = """<!DOCTYPE html>
         availableDeliveryQty = Number(holding.delivery_qty || 0);
         availBadge.innerText = holding.quantity.toLocaleString();
       }
-    }
+    } 
 
     async function selectTradeStock(sym) {
       if (!sym) return;
-      selectedStock = sym;
-
+      selectedStock = sym; 
       document.getElementById('modalStockSymbol').innerText = sym;
-      const syncIcon = document.getElementById('syncIcon');
-      if (syncIcon) syncIcon.classList.add('spin');
+      document.getElementById('scopeStockName').innerText = sym;
+      document.getElementById('rightPanelTitle').innerText = sym + ' Last 50 Orders';
 
+      const syncIcon = document.getElementById('syncIcon');
+      if (syncIcon) syncIcon.classList.add('spin'); 
       const holding = USER_HOLDINGS.find(h => h.stock_code === sym);
       if (holding) {
-        document.getElementById('inputQty').value = holding.quantity;
+        document.getElementById('inputQty').value = 1;
         setProduct('mtf');
       } else {
         document.getElementById('inputQty').value = 1;
         setProduct('delivery');
-      }
-
+      } 
       updateSelectedStockDetails();
-      renderStockOrders();
       renderCurrentList();
-      recalcOrderRequirement();
+      recalcOrderRequirement(); 
+
+      // Fetch the last 50 orders for this specific stock
+      fetchStockHistory(sym);
 
       try {
         await fetchQuote();
@@ -627,7 +599,7 @@ TRADE_PAGE_HTML = """<!DOCTYPE html>
         if (syncIcon) syncIcon.classList.remove('spin');
       }
       recalcOrderRequirement();
-    }
+    } 
 
     async function fetchQuote() {
       if (!selectedStock) return;
@@ -635,12 +607,20 @@ TRADE_PAGE_HTML = """<!DOCTYPE html>
         const res = await fetch(`/api/quote?stock_code=${selectedStock}`);
         const d = await res.json();
         currentLTP = Number(d.ltp) || 0.0;
-        document.getElementById('nsePrice').innerText = currentLTP.toFixed(2);
+        document.getElementById('nsePrice').innerText = currentLTP.toFixed(2); 
+        const changePts = Number(d.change_pts) || 0.0;
         const changePct = Number(d.change_pct) || 0.0;
-        const changeEl = document.getElementById('nseChange');
-        changeEl.innerText = (changePct >= 0 ? '+' : '') + changePct.toFixed(2) + '%';
-        changeEl.className = changePct >= 0 ? 'font-bold text-emerald-600' : 'font-bold text-rose-600';
-
+        const changeEl = document.getElementById('nseChange'); 
+        const sign = changePts > 0 ? '+' : '';
+        changeEl.innerText = `${sign}${changePts.toFixed(2)} (${sign}${changePct.toFixed(2)}%)`;
+        
+        if (changePts > 0) {
+          changeEl.className = 'font-bold text-emerald-600';
+        } else if (changePts < 0) {
+          changeEl.className = 'font-bold text-rose-600';
+        } else {
+          changeEl.className = 'font-bold text-slate-500';
+        } 
         const priceType = document.getElementById('selectPriceType').value;
         const inpPrice = document.getElementById('inputPrice');
         if (priceType === 'LIMIT' && !inpPrice.value) {
@@ -649,12 +629,12 @@ TRADE_PAGE_HTML = """<!DOCTYPE html>
       } catch (e) {
         console.error("Quote error:", e);
       }
-    }
+    } 
 
     function updateAvailableQtyUI() {
       const badge = document.getElementById('availQtyBadge');
       badge.innerText = currentProduct === 'mtf' ? availableMtfQty.toLocaleString() : availableDeliveryQty.toLocaleString();
-    }
+    } 
 
     function setAction(action) {
       currentAction = action;
@@ -673,7 +653,7 @@ TRADE_PAGE_HTML = """<!DOCTYPE html>
         submitBtn.innerText = 'Submit Sell / Square-off';
       }
       recalcOrderRequirement();
-    }
+    } 
 
     function setProduct(prod) {
       currentProduct = prod;
@@ -687,7 +667,7 @@ TRADE_PAGE_HTML = """<!DOCTYPE html>
       });
       updateAvailableQtyUI();
       recalcOrderRequirement();
-    }
+    } 
 
     function onPriceTypeChange() {
       const type = document.getElementById('selectPriceType').value;
@@ -704,7 +684,7 @@ TRADE_PAGE_HTML = """<!DOCTYPE html>
         inp.classList.remove('bg-slate-50', 'text-slate-400');
       }
       recalcOrderRequirement();
-    }
+    } 
 
     function recalcOrderRequirement() {
       const qty = parseFloat(document.getElementById('inputQty').value) || 0;
@@ -717,7 +697,7 @@ TRADE_PAGE_HTML = """<!DOCTYPE html>
       document.getElementById('approxReq').innerText = '₹' + rawTotal.toLocaleString('en-IN', {
         minimumFractionDigits: 2, maximumFractionDigits: 2
       });
-    }
+    } 
 
     async function executeOrder() {
       const qty = parseInt(document.getElementById('inputQty').value);
@@ -735,13 +715,11 @@ TRADE_PAGE_HTML = """<!DOCTYPE html>
         order_type: priceType.toLowerCase(),
         quantity: qty,
         price: price
-      };
-
+      }; 
       const msgEl = document.getElementById('orderStatusMsg');
       msgEl.className = 'text-center text-xs font-semibold py-2 px-3 rounded-lg bg-blue-50 text-blue-700 border border-blue-200';
       msgEl.innerText = 'Submitting order to ICICI...';
-      msgEl.classList.remove('hidden');
-
+      msgEl.classList.remove('hidden'); 
       try {
         const res = await fetch('/api/place_order', {
           method: 'POST',
@@ -761,7 +739,7 @@ TRADE_PAGE_HTML = """<!DOCTYPE html>
         msgEl.className = 'text-center text-xs font-semibold py-2 px-3 rounded-lg bg-rose-50 text-rose-700 border border-rose-200';
         msgEl.innerText = 'Network error during submission.';
       }
-    }
+    } 
 
     async function refreshData(force = true) {
       const syncIcon = document.getElementById('syncIcon');
@@ -769,16 +747,15 @@ TRADE_PAGE_HTML = """<!DOCTYPE html>
       try {
         await initOrderPad(force);
         await fetchQuote();
+        if (selectedStock) await fetchStockHistory(selectedStock);
       } finally {
         if (syncIcon) syncIcon.classList.remove('spin');
       }
-    }
+    } 
 
     window.addEventListener('DOMContentLoaded', () => {
       initOrderPad(false);
-      // Auto-poll bootstrap every 8 seconds
       setInterval(() => initOrderPad(false), 8000);
-      // Auto-poll active quote every 4 seconds
       setInterval(() => fetchQuote(), 4000);
     });
   </script>
@@ -799,6 +776,7 @@ def _get_funds_data(breeze):
         print(f"[-] Funds error: {e}")
     return {"balance": 0.0}
 
+
 def _get_holdings_data(breeze, positions_cached=None):
     consolidated = {}
     try:
@@ -806,39 +784,31 @@ def _get_holdings_data(breeze, positions_cached=None):
         if items is None:
             pos_res = breeze.get_portfolio_positions()
             items = pos_res.get("Success") if (pos_res and isinstance(pos_res, dict)) else []
-        
         if isinstance(items, list):
             unique_codes = list({
                 str(it.get("stock_code") or "").upper().strip()
                 for it in items if it.get("stock_code")
             })
-
             missing_codes = [c for c in unique_codes if c not in COMPANY_NAMES_CACHE]
             if missing_codes:
                 with ThreadPoolExecutor(max_workers=6) as executor:
                     executor.map(lambda c: resolve_single_stock_name(breeze, c), missing_codes)
-
             for it in items:
                 sym = str(it.get("stock_code") or "").upper().strip()
                 if not sym:
                     continue
-
                 full_name = COMPANY_NAMES_CACHE.get(sym, sym)
                 qty = float(parse_num(it.get("quantity") or 0))
                 if qty <= 0:
                     continue
-
                 avg_p = float(parse_num(it.get("average_price") or 0))
                 ltp = float(parse_num(it.get("ltp") or 0))
                 pnl = float(parse_num(it.get("pnl") or 0))
                 p_type = str(it.get("product_type") or "").lower()
-
                 invested_part = qty * avg_p
                 current_part = qty * (ltp if ltp > 0 else avg_p)
-
                 mtf_qty = qty if ("margin" in p_type or "mtf" in p_type) else 0
                 deliv_qty = qty if ("margin" not in p_type and "mtf" not in p_type) else 0
-
                 if sym not in consolidated:
                     consolidated[sym] = {
                         "stock_code": sym,
@@ -864,7 +834,6 @@ def _get_holdings_data(breeze, positions_cached=None):
                         consolidated[sym]["ltp"] = ltp
     except Exception as e:
         print(f"[-] Positions error: {e}")
-
     result = []
     for sym, data in consolidated.items():
         qty = data["quantity"]
@@ -874,7 +843,6 @@ def _get_holdings_data(breeze, positions_cached=None):
         ltp = data["ltp"]
         pnl = data["pnl"]
         pnl_pct = (pnl / tot_inv * 100) if tot_inv > 0 else 0.0
-
         result.append({
             "stock_code": sym,
             "company_name": data["company_name"],
@@ -889,48 +857,64 @@ def _get_holdings_data(breeze, positions_cached=None):
             "pnl_pct": round(pnl_pct, 2),
             "lots_count": data["lots_count"]
         })
-
     result.sort(key=lambda x: x["total_current"], reverse=True)
     return result
 
+
 def _get_orders_data(breeze, positions_cached=None):
     orders_list = []
-    try:
-        order_res = breeze.get_order_list(exchange_code="NSE")
-        items = order_res.get("Success") if (order_res and isinstance(order_res, dict)) else []
-        if isinstance(items, list):
-            for o in items:
-                sym = str(o.get("stock_code") or "").upper().strip()
-                if not sym:
-                    continue
+    seen_order_ids = set()
 
-                full_name = COMPANY_NAMES_CACHE.get(sym, sym)
-                stoploss = float(parse_num(o.get("stoploss") or o.get("trigger_price") or o.get("stoploss_trigger") or 0))
-                o_type = str(o.get("order_type") or "Limit").strip()
-                is_trigger = (stoploss > 0) or ("stoploss" in o_type.lower()) or ("sl" in o_type.lower()) or ("gtt" in o_type.lower())
+    today_start = datetime.utcnow().strftime("%Y-%m-%dT00:00:00.000Z")
+    today_now = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.000Z")
 
-                tag = "REGULAR"
-                if is_trigger:
-                    tag = "GTT / TRIGGER" if "gtt" in o_type.lower() else "SL-TRIGGER"
+    for ex in ["NSE", "BSE"]:
+        try:
+            order_res = breeze.get_order_list(
+                exchange_code=ex,
+                from_date=today_start,
+                to_date=today_now
+            )
+            items = order_res.get("Success") if (order_res and isinstance(order_res, dict)) else []
+            if isinstance(items, list):
+                for o in items:
+                    oid = str(o.get("order_id") or "")
+                    if not oid or oid in seen_order_ids:
+                        continue
+                    seen_order_ids.add(oid)
 
-                orders_list.append({
-                    "order_id": str(o.get("order_id") or ""),
-                    "stock_code": sym,
-                    "company_name": full_name,
-                    "action": str(o.get("action") or "").upper(),
-                    "product": str(o.get("product") or o.get("product_type") or "MTF"),
-                    "order_type": o_type,
-                    "quantity": int(float(parse_num(o.get("quantity") or 0))),
-                    "price": float(parse_num(o.get("price") or 0)),
-                    "trigger_price": stoploss,
-                    "is_trigger": is_trigger,
-                    "order_tag": tag,
-                    "status": str(o.get("status") or o.get("order_status") or "Executed"),
-                    "order_date": str(o.get("order_date") or o.get("order_time") or "")
-                })
-    except Exception as e:
-        print(f"[-] Order list error: {e}")
+                    sym = str(o.get("stock_code") or "").upper().strip()
+                    if not sym:
+                        continue
+                    full_name = COMPANY_NAMES_CACHE.get(sym, sym)
+                    stoploss = float(parse_num(o.get("stoploss") or o.get("trigger_price") or o.get("stoploss_trigger") or 0))
+                    o_type = str(o.get("order_type") or "Limit").strip()
+                    is_trigger = (stoploss > 0) or ("stoploss" in o_type.lower()) or ("sl" in o_type.lower()) or ("gtt" in o_type.lower())
+                    tag = "REGULAR"
+                    if is_trigger:
+                        tag = "GTT / TRIGGER" if "gtt" in o_type.lower() else "SL-TRIGGER"
+                    
+                    orders_list.append({
+                        "order_id": oid,
+                        "stock_code": sym,
+                        "company_name": full_name,
+                        "action": str(o.get("action") or "").upper(),
+                        "product": str(o.get("product_type") or o.get("product") or "MTF").upper(),
+                        "order_type": o_type,
+                        "quantity": int(float(parse_num(o.get("quantity") or 0))),
+                        "price": float(parse_num(o.get("price") or 0)),
+                        "average_price": float(parse_num(o.get("average_price") or 0)),
+                        "trigger_price": stoploss,
+                        "is_trigger": is_trigger,
+                        "is_history": str(o.get("status") or "").lower() in ["executed", "complete"],
+                        "order_tag": tag,
+                        "status": str(o.get("status") or o.get("order_status") or "Ordered"),
+                        "order_date": str(o.get("order_datetime") or o.get("order_date") or "")
+                    })
+        except Exception as e:
+            print(f"[-] Order list error ({ex}): {e}")
 
+    # Active position triggers
     try:
         items = positions_cached
         if items is None:
@@ -951,8 +935,10 @@ def _get_orders_data(breeze, positions_cached=None):
                         "order_type": "SL-Trigger",
                         "quantity": int(float(parse_num(it.get("quantity") or 0))),
                         "price": sl_trig,
+                        "average_price": 0.0,
                         "trigger_price": sl_trig,
                         "is_trigger": True,
+                        "is_history": False,
                         "order_tag": "MTF-TRIGGER",
                         "status": "Trigger Active",
                         "order_date": str(it.get("mtf_expiry_date") or "")
@@ -968,12 +954,12 @@ def _get_orders_data(breeze, positions_cached=None):
 def view_trade():
     return render_template_string(TRADE_PAGE_HTML, active_page="trade")
 
+
 @trade_bp.route("/api/trade_bootstrap")
 def api_trade_bootstrap():
     breeze, is_auth = get_breeze_client()
     if not is_auth or not breeze:
         return jsonify({"funds": {"balance": 0.0}, "holdings": [], "orders": []})
-
     positions_cached = []
     try:
         pos_res = breeze.get_portfolio_positions()
@@ -981,21 +967,110 @@ def api_trade_bootstrap():
             positions_cached = pos_res.get("Success") or []
     except Exception as e:
         print(f"[-] Cached positions fetch error: {e}")
-
     with ThreadPoolExecutor(max_workers=3) as executor:
         f_funds = executor.submit(_get_funds_data, breeze)
         f_holdings = executor.submit(_get_holdings_data, breeze, positions_cached)
         f_orders = executor.submit(_get_orders_data, breeze, positions_cached)
-
         funds_data = f_funds.result()
         holdings_data = f_holdings.result()
         orders_data = f_orders.result()
-
     return jsonify({
         "funds": funds_data,
         "holdings": holdings_data,
         "orders": orders_data
     })
+
+
+@trade_bp.route("/api/stock_history")
+def api_stock_history():
+    stock_code = request.args.get("stock_code", "").upper().strip()
+    if not stock_code:
+        return jsonify({"history": []})
+    
+    breeze, is_auth = get_breeze_client()
+    if not is_auth or not breeze:
+        return jsonify({"history": []})
+
+    to_date = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    today_start = datetime.utcnow().strftime("%Y-%m-%dT00:00:00.000Z")
+    
+    combined_history = []
+    seen_ids = set()
+
+    # 1. Fetch live open/executed orders for today
+    try:
+        ord_res = breeze.get_order_list(
+            exchange_code="NSE",
+            from_date=today_start,
+            to_date=to_date
+        )
+        for o in (ord_res.get("Success") or []):
+            if str(o.get("stock_code") or "").upper().strip() == stock_code:
+                oid = str(o.get("order_id") or "")
+                if oid:
+                    seen_ids.add(oid)
+                sl = float(parse_num(o.get("stoploss") or o.get("trigger_price") or 0))
+                o_type = str(o.get("order_type") or "Limit")
+                combined_history.append({
+                    "order_id": oid,
+                    "stock_code": stock_code,
+                    "company_name": COMPANY_NAMES_CACHE.get(stock_code, stock_code),
+                    "action": str(o.get("action") or "").upper(),
+                    "product": str(o.get("product_type") or "MTF").upper(),
+                    "order_type": o_type,
+                    "quantity": int(float(parse_num(o.get("quantity") or 0))),
+                    "price": float(parse_num(o.get("price") or 0)),
+                    "average_price": float(parse_num(o.get("average_price") or 0)),
+                    "trigger_price": sl,
+                    "is_trigger": sl > 0,
+                    "is_history": str(o.get("status") or "").lower() in ["executed", "complete"],
+                    "order_tag": "LIVE ORDER",
+                    "status": str(o.get("status") or "Ordered"),
+                    "order_date": str(o.get("order_datetime") or o.get("order_date") or "")
+                })
+    except Exception as e:
+        print(f"[-] Error fetching live orders for history: {e}")
+
+    # 2. Fetch trade list executions since FROM_DATE
+    try:
+        trade_res = breeze.get_trade_list(
+            from_date=FROM_DATE,
+            to_date=to_date,
+            exchange_code="NSE",
+            product_type=""
+        )
+        for t in (trade_res.get("Success") or []):
+            if str(t.get("stock_code") or "").upper().strip() == stock_code:
+                oid = str(t.get("order_id") or "")
+                if oid in seen_ids:
+                    continue
+                seen_ids.add(oid)
+                q = float(parse_num(t.get("quantity") or 1))
+                tot = float(parse_num(t.get("average_cost") or 0))
+                combined_history.append({
+                    "order_id": oid,
+                    "stock_code": stock_code,
+                    "company_name": COMPANY_NAMES_CACHE.get(stock_code, stock_code),
+                    "action": str(t.get("action") or "BUY").upper(),
+                    "product": str(t.get("product_type") or "MARGIN").upper(),
+                    "order_type": "Limit",
+                    "quantity": int(q),
+                    "price": float(parse_num(t.get("price") or 0)),
+                    "average_price": round(tot / q, 2) if (q > 0 and tot > 0) else float(parse_num(t.get("price") or 0)),
+                    "trigger_price": 0.0,
+                    "is_trigger": False,
+                    "is_history": True,
+                    "order_tag": "TRADE-FILL",
+                    "status": "Executed",
+                    "order_date": str(t.get("trade_date") or "")
+                })
+    except Exception as e:
+        print(f"[-] Error fetching trades for history: {e}")
+
+    # Sort descending by date and return the last 50
+    combined_history.sort(key=lambda x: str(x.get("order_date") or ""), reverse=True)
+    return jsonify({"history": combined_history[:50]})
+
 
 @trade_bp.route("/api/trade_holdings")
 def api_trade_holdings():
@@ -1004,12 +1079,14 @@ def api_trade_holdings():
         return jsonify({"data": []})
     return jsonify({"data": _get_holdings_data(breeze)})
 
+
 @trade_bp.route("/api/stock_orders")
 def api_stock_orders():
     breeze, is_auth = get_breeze_client()
     if not is_auth or not breeze:
         return jsonify({"data": []})
     return jsonify({"data": _get_orders_data(breeze)})
+
 
 @trade_bp.route("/api/funds")
 def api_funds():
@@ -1018,27 +1095,28 @@ def api_funds():
         return jsonify({"balance": 0.0})
     return jsonify(_get_funds_data(breeze))
 
+
 @trade_bp.route("/api/quote")
 def api_quote():
     stock_code = request.args.get("stock_code", "").upper().strip()
     if not stock_code:
-        return jsonify({"ltp": 0.0, "change_pct": 0.0})
-
+        return jsonify({"ltp": 0.0, "change_pts": 0.0, "change_pct": 0.0})
     breeze, is_auth = get_breeze_client()
     if not is_auth or not breeze:
-        return jsonify({"ltp": 0.0, "change_pct": 0.0})
-
+        return jsonify({"ltp": 0.0, "change_pts": 0.0, "change_pct": 0.0})
     try:
         res = breeze.get_quotes(stock_code=stock_code, exchange_code="NSE", product_type="cash")
         if res and res.get("Success") and len(res["Success"]) > 0:
             q = res["Success"][0]
             ltp = float(parse_num(q.get("ltp") or 0.0))
             close = float(parse_num(q.get("close") or q.get("previous_close") or 0.0))
-            pct = round(((ltp - close) / close * 100), 2) if close > 0 else 0.0
-            return jsonify({"ltp": ltp, "change_pct": pct})
+            pts = round(ltp - close, 2) if close > 0 else 0.0
+            pct = round((pts / close * 100), 2) if close > 0 else 0.0
+            return jsonify({"ltp": ltp, "change_pts": pts, "change_pct": pct})
     except Exception as e:
         print(f"[-] Quote error: {e}")
-    return jsonify({"ltp": 0.0, "change_pct": 0.0})
+    return jsonify({"ltp": 0.0, "change_pts": 0.0, "change_pct": 0.0})
+
 
 @trade_bp.route("/api/place_order", methods=["POST"])
 def api_place_order():
@@ -1049,16 +1127,12 @@ def api_place_order():
     order_type = str(data.get("order_type") or "market").lower().strip()
     qty = str(data.get("quantity") or "1").strip()
     price = str(data.get("price") or "0").strip()
-
     if not stock_code:
         return jsonify({"success": False, "message": "No stock code specified."})
-
     breeze_prod = "margin" if prod_type in ["intraday", "mtf"] else "cash"
-
     breeze, is_auth = get_breeze_client()
     if not is_auth or not breeze:
         return jsonify({"success": False, "message": "Session expired."})
-
     try:
         resp = breeze.place_order(
             stock_code=stock_code,
@@ -1073,7 +1147,6 @@ def api_place_order():
         )
         if resp and resp.get("Success"):
             order_id = resp["Success"].get("order_id", "SUBMITTED")
-            # Invalidate memory cache so next poll gets fresh state
             clear_memory_cache()
             return jsonify({"success": True, "order_id": order_id})
         else:
