@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Monitor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600;700;800;900&family=Plus+Jakarta+Sans:wght@600;700;800;900&display=swap"
+        rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            -ms-overflow-style: none !important;
+            scrollbar-width: none !important;
+        }
+
+        html,
+        body {
+            height: 100vh;
+            width: 100vw;
+            margin: 0;
+            padding: 0;
+            background-color: #f1f5f9;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            color: #0f172a;
+            overflow: hidden !important;
+            user-select: none;
+        }
+
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        ::-webkit-scrollbar {
+            display: none !important;
+            width: 0 !important;
+            height: 0 !important;
+        }
+
+        .tree-card {
+            background: #ffffff;
+            transition: transform 0.1s ease, box-shadow 0.1s ease;
+            cursor: pointer;
+        }
+
+        .tree-card:hover {
+            transform: translateY(-2px);
+            z-index: 40;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+        }
+
+        .bull-theme {
+            border: 2px solid #86efac;
+            background-color: #f0fdf4;
+        }
+
+        .bull-theme:hover {
+            border-color: #16a34a;
+        }
+
+        .bear-theme {
+            border: 2px solid #fca5a5;
+            background-color: #fef2f2;
+        }
+
+        .bear-theme:hover {
+            border-color: #dc2626;
+        }
+
+        #hoverTooltip {
+            position: fixed;
+            pointer-events: none;
+            z-index: 100;
+            display: none;
+            background: #ffffff;
+            border: 1.5px solid #cbd5e1;
+            box-shadow: 0 20px 48px rgba(0, 0, 0, 0.2);
+        }
+
+        .rank-pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 900;
+            border-radius: 4px;
+            letter-spacing: -0.03em;
+            line-height: 1;
+        }
+
+        .rank-pill-bull {
+            background-color: #16a34a;
+            color: #ffffff;
+        }
+
+        .rank-pill-bear {
+            background-color: #dc2626;
+            color: #ffffff;
+        }
+    </style>
+</head>
+
+<body class="p-2.5 h-screen w-screen overflow-hidden">
+    <div
+        class="bg-white border-2 border-slate-300 rounded-2xl w-full h-full p-3 overflow-hidden flex flex-col justify-between shadow-xs">
+        <main class="grid grid-cols-12 gap-0 w-full h-full overflow-hidden">
+            <section
+                class="col-span-3 flex flex-col justify-between border-r-2 border-slate-300 pr-3 h-full overflow-hidden">
+                <div id="bullSectorsContainer" class="flex flex-col space-y-1.5 overflow-hidden shrink-0"></div>
+                <div class="flex-1 min-h-[16px]"></div>
+                <div id="bearSectorsContainer" class="flex flex-col justify-end space-y-1.5 overflow-hidden shrink-0">
+                </div>
+            </section>
+            <div class="col-span-9 flex flex-col h-full pl-3 overflow-hidden">
+                <div class="flex-1 grid grid-cols-12 gap-0 pb-2.5 overflow-hidden">
+                    <div class="col-span-7 grid grid-cols-12 gap-2.5 h-full pr-3">
+                        <div id="bullCol8" class="col-span-3 flex flex-col justify-between h-full"></div>
+                        <div id="bullCol5" class="col-span-3 flex flex-col justify-between h-full"></div>
+                        <div id="bullCol4" class="col-span-3 flex flex-col justify-between h-full"></div>
+                        <div id="bullTop3Mid" class="col-span-3 flex flex-col justify-between h-full space-y-2"></div>
+                    </div>
+                    <div class="col-span-5 border-l-2 border-slate-300 pl-3 h-full overflow-hidden">
+                        <div id="bullDetailedDeck" class="flex flex-col justify-between h-full space-y-2"></div>
+                    </div>
+                </div>
+                <div class="w-full h-0.5 bg-slate-300 shrink-0 my-0.5"></div>
+                <div class="flex-1 grid grid-cols-12 gap-0 pt-2.5 overflow-hidden">
+                    <div class="col-span-7 grid grid-cols-12 gap-2.5 h-full pr-3">
+                        <div id="bearCol8" class="col-span-3 flex flex-col justify-between h-full"></div>
+                        <div id="bearCol5" class="col-span-3 flex flex-col justify-between h-full"></div>
+                        <div id="bearCol4" class="col-span-3 flex flex-col justify-between h-full"></div>
+                        <div id="bearTop3Mid" class="col-span-3 flex flex-col justify-between h-full space-y-2"></div>
+                    </div>
+                    <div class="col-span-5 border-l-2 border-slate-300 pl-3 h-full overflow-hidden">
+                        <div id="bearDetailedDeck" class="flex flex-col justify-between h-full space-y-2"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <div id="hoverTooltip" class="rounded-2xl p-4 text-slate-800 font-mono text-xs w-[460px]">
+        <div class="flex justify-between items-start border-b-2 border-slate-200 pb-2 mb-2">
+            <div class="max-w-[310px]">
+                <div class="flex items-center space-x-2">
+                    <span id="ttSymbol" class="text-xl font-black text-slate-900 block tracking-tight">--</span>
+                    <span id="ttBuildupBadge" class="text-[10px] font-black px-2 py-0.5 rounded">--</span>
+                </div>
+                <span id="ttCompanyName"
+                    class="text-xs text-slate-800 font-extrabold block whitespace-normal break-words mt-1 leading-snug">--</span>
+                <span id="ttSector"
+                    class="text-[10px] text-slate-500 font-bold block mt-0.5 uppercase tracking-wide">--</span>
+            </div>
+            <div class="text-right shrink-0 ml-3">
+                <span id="ttLtp" class="text-xl font-black block">₹0.00</span>
+                <span id="ttPchange" class="text-sm font-black block">+0.00%</span>
+            </div>
+        </div>
+        <div
+            class="grid grid-cols-2 gap-2 bg-slate-50 p-2 rounded-xl border border-slate-200 mb-2 font-bold text-[11px]">
+            <div class="flex justify-between border-r border-slate-200 pr-2">
+                <span class="text-slate-500">TODAY H/L:</span>
+                <span class="text-slate-900 font-black"><span id="ttDayHigh" class="text-emerald-700">₹0</span> / <span
+                        id="ttDayLow" class="text-rose-700">₹0</span></span>
+            </div>
+            <div class="flex justify-between pl-1">
+                <span class="text-slate-500">52W H/L:</span>
+                <span class="text-slate-900 font-black"><span id="ttYearHigh" class="text-emerald-700">₹0</span> / <span
+                        id="ttYearLow" class="text-rose-700">₹0</span></span>
+            </div>
+        </div>
+        <div class="mb-2 bg-slate-50 p-2 rounded-xl border border-slate-200">
+            <svg id="ttChartSvg" class="w-full h-16 overflow-visible"></svg>
+        </div>
+        <div
+            class="grid grid-cols-3 gap-2 bg-slate-100 p-2 rounded-xl border border-slate-200 mb-2 font-black text-center text-[11px]">
+            <div>
+                <span class="text-slate-500 text-[10px] block">RSI(14)</span>
+                <span id="ttRsi" class="text-slate-900">--</span>
+            </div>
+            <div class="border-x border-slate-300 px-1">
+                <span class="text-slate-500 text-[10px] block">MACD</span>
+                <span id="ttMacd" class="text-slate-900">--</span>
+            </div>
+            <div>
+                <span class="text-slate-500 text-[10px] block">OPEN INTEREST</span>
+                <span id="ttOi" class="text-slate-900">--</span>
+            </div>
+        </div>
+        <div class="space-y-1 mb-2 border-b-2 border-slate-200 pb-2">
+            <div
+                class="text-[10px] text-slate-500 font-black uppercase flex justify-between border-b border-slate-200 pb-0.5">
+                <span>BUYERS</span>
+                <span>SELLERS</span>
+            </div>
+            <div id="ttOrderDepth" class="space-y-0.5 text-xs"></div>
+            <div class="flex justify-between items-center text-xs pt-1 font-black">
+                <span class="text-emerald-700" id="ttTotalBuy">BUY: 0</span>
+                <span class="text-rose-700" id="ttTotalSell">SELL: 0</span>
+            </div>
+        </div>
+    </div>
+    <script>
+        let globalData = null;
+        const chartCache = {}, detailCache = {}, pendingCharts = new Set(), pendingDetails = new Set();
+        let hoverTimeout = null;
+        const formatRank = (idx) => String(idx + 1).padStart(2, '0');
+        const formatNum = (val) => Number(val || 0).toLocaleString('en-IN', { maximumFractionDigits: 1 });
+        async function loadDashboard() {
+            try {
+                const res = await fetch('/api/market');
+                globalData = await res.json();
+                [...globalData.top_bullish.slice(0, 3), ...globalData.top_bearish.slice(0, 3)].forEach(s => {
+                    if (s.chartPoints?.length) chartCache[s.symbol] = s.chartPoints;
+                });
+                renderUI(globalData);
+            } catch (err) {
+                console.error("Dashboard error:", err);
+            }
+        }
+        function renderSmoothChart(points, isBullish, width = 180, height = 44) {
+            if (!points || points.length < 2) {
+                return `<svg viewBox="0 0 ${width} ${height}" class="w-full h-full"><line x1="0" y1="${height / 2}" x2="${width}" y2="${height / 2}" stroke="#cbd5e1" stroke-width="2.5"/></svg>`;
+            }
+            const min = Math.min(...points), max = Math.max(...points), range = (max - min) || 1;
+            const pts = points.map((p, idx) => ({
+                x: (idx / (points.length - 1)) * width,
+                y: height - ((p - min) / range) * (height - 10) - 5
+            }));
+            let d = `M ${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)}`;
+            for (let i = 0; i < pts.length - 1; i++) {
+                const mx = (pts[i].x + pts[i + 1].x) / 2;
+                d += ` C ${mx.toFixed(1)},${pts[i].y.toFixed(1)} ${mx.toFixed(1)},${pts[i + 1].y.toFixed(1)} ${pts[i + 1].x.toFixed(1)},${pts[i + 1].y.toFixed(1)}`;
+            }
+            const strokeColor = isBullish ? '#16a34a' : '#dc2626';
+            const fillColor = isBullish ? 'rgba(22, 163, 74, 0.14)' : 'rgba(220, 38, 38, 0.14)';
+            return `
+                <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" class="w-full h-full overflow-visible">
+                    <path d="${d} L ${width},${height} L 0,${height} Z" fill="${fillColor}" />
+                    <path d="${d}" fill="none" stroke="${strokeColor}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>`;
+        }
+        function handleCardMouseEnter(e, symbol, isBull) {
+            clearTimeout(hoverTimeout);
+            const tt = document.getElementById('hoverTooltip');
+            tt.style.display = 'block';
+            let x = e.clientX + 20, y = e.clientY - 20;
+            if (x + 480 > window.innerWidth) x = e.clientX - 490;
+            if (y + 420 > window.innerHeight) y = window.innerHeight - 430;
+            tt.style.left = `${x}px`;
+            tt.style.top = `${y}px`;
+            const list = isBull ? globalData.top_bullish : globalData.top_bearish;
+            const stock = list.find(s => s.symbol === symbol) || {};
+            const tech = stock.technicals || { rsi: 50.0, macd: 0.0 };
+            document.getElementById('ttSymbol').innerText = stock.symbol || symbol;
+            document.getElementById('ttCompanyName').innerText = stock.companyName || stock.symbol || symbol;
+            document.getElementById('ttSector').innerText = "SECTOR: " + (stock.sector || 'F&O Stock');
+            document.getElementById('ttLtp').innerText = `₹${stock.ltp}`;
+            const pChangeEl = document.getElementById('ttPchange');
+            pChangeEl.innerText = `${isBull ? '+' : ''}${stock.pchange}%`;
+            pChangeEl.className = `text-sm font-black block ${isBull ? 'text-emerald-700' : 'text-rose-700'}`;
+            const badgeEl = document.getElementById('ttBuildupBadge');
+            badgeEl.innerText = stock.derivatives?.buildup || 'NEUTRAL';
+            badgeEl.className = `text-[10px] font-black px-2 py-0.5 rounded ${isBull ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`;
+            document.getElementById('ttDayHigh').innerText = `₹${stock.dayHigh || stock.ltp}`;
+            document.getElementById('ttDayLow').innerText = `₹${stock.dayLow || stock.ltp}`;
+            document.getElementById('ttYearHigh').innerText = `₹${stock.yearHigh || stock.dayHigh || '--'}`;
+            document.getElementById('ttYearLow').innerText = `₹${stock.yearLow || stock.dayLow || '--'}`;
+            document.getElementById('ttRsi').innerText = `${tech.rsi}`;
+            document.getElementById('ttMacd').innerText = `${tech.macd > 0 ? '+' : ''}${tech.macd}`;
+            document.getElementById('ttOi').innerText = `${formatNum(stock.derivatives?.open_interest)} (${(stock.derivatives?.oi_change_pct >= 0 ? '+' : '')}${stock.derivatives?.oi_change_pct || 0}%)`;
+            document.getElementById('ttChartSvg').innerHTML = renderSmoothChart(chartCache[symbol] || [], isBull, 420, 60);
+            if (detailCache[symbol]) renderTooltipDepth(detailCache[symbol]);
+            else document.getElementById('ttOrderDepth').innerHTML = `<div class="text-slate-400 text-xs py-1">Connecting depth...</div>`;
+            hoverTimeout = setTimeout(async () => {
+                if (!chartCache[symbol] && !pendingCharts.has(symbol)) {
+                    pendingCharts.add(symbol);
+                    try {
+                        const res = await fetch(`/api/symbol/chart?symbol=${symbol}`);
+                        const cData = await res.json();
+                        chartCache[symbol] = cData.points || [];
+                        if (cData.technicals) stock.technicals = cData.technicals;
+                        if (document.getElementById('ttSymbol').innerText === symbol) {
+                            document.getElementById('ttChartSvg').innerHTML = renderSmoothChart(chartCache[symbol], isBull, 420, 60);
+                            if (stock.technicals) {
+                                document.getElementById('ttRsi').innerText = `${stock.technicals.rsi}`;
+                                document.getElementById('ttMacd').innerText = `${stock.technicals.macd > 0 ? '+' : ''}${stock.technicals.macd}`;
+                            }
+                        }
+                    } catch { chartCache[symbol] = []; }
+                    finally { pendingCharts.delete(symbol); }
+                }
+                if (!detailCache[symbol] && !pendingDetails.has(symbol)) {
+                    pendingDetails.add(symbol);
+                    try {
+                        const res = await fetch(`/api/symbol/detail?symbol=${symbol}`);
+                        detailCache[symbol] = await res.json();
+                        if (document.getElementById('ttSymbol').innerText === symbol) {
+                            renderTooltipDepth(detailCache[symbol]);
+                        }
+                    } catch { detailCache[symbol] = null; }
+                    finally { pendingDetails.delete(symbol); }
+                }
+            }, 150);
+        }
+        function renderTooltipDepth(detail) {
+            if (!detail?.orderBook) return;
+            const ob = detail.orderBook;
+            document.getElementById('ttTotalBuy').innerText = `BUY: ${ob.totalBuyQty.toLocaleString()}`;
+            document.getElementById('ttTotalSell').innerText = `SELL: ${ob.totalSellQty.toLocaleString()}`;
+            let depthHtml = '';
+            for (let i = 0; i < 3; i++) {
+                const b = ob.bids[i] || { price: 0, qty: 0 };
+                const a = ob.asks[i] || { price: 0, qty: 0 };
+                depthHtml += `
+                    <div class="flex justify-between text-xs text-slate-700">
+                        <span class="text-emerald-700 font-bold">${b.qty} @ ₹${b.price}</span>
+                        <span class="text-rose-700 font-bold">₹${a.price} @ ${a.qty}</span>
+                    </div>`;
+            }
+            document.getElementById('ttOrderDepth').innerHTML = depthHtml;
+        }
+        function handleCardMouseLeave() {
+            clearTimeout(hoverTimeout);
+            document.getElementById('hoverTooltip').style.display = 'none';
+        }
+        const renderPill = (idx, isBull) => `<span class="rank-pill ${isBull ? 'rank-pill-bull' : 'rank-pill-bear'} text-[9px] px-1 py-0.5 shrink-0">${formatRank(idx)}</span>`;
+        const renderHL = (s) => `
+            <div class="text-[8.5px] font-bold text-slate-600 bg-white/70 px-1 py-0.5 rounded border border-slate-200 leading-tight">
+                <div class="flex justify-between"><span class="text-slate-400">H/L:</span><span class="font-black text-slate-800">${s.dayHigh} / ${s.dayLow}</span></div>
+                <div class="flex justify-between"><span class="text-slate-400">52W:</span><span class="font-black text-slate-800">${s.yearHigh} / ${s.yearLow}</span></div>
+            </div>`;
+        function renderStockCard(s, idx, isBull, colType) {
+            if (!s) return '';
+            const theme = isBull ? 'bull-theme' : 'bear-theme';
+            const textCol = isBull ? 'text-emerald-700' : 'text-rose-700';
+            const sign = isBull ? '+' : '';
+            if (colType === 8) {
+                return `
+                    <div class="tree-card ${theme} rounded-md px-1.5 py-1 flex flex-col justify-between font-mono h-[11.8%]"
+                         onmouseenter="handleCardMouseEnter(event, '${s.symbol}', ${isBull})" onmouseleave="handleCardMouseLeave()">
+                        <div class="flex justify-between items-center text-xs leading-none">
+                            <div class="flex items-center space-x-1 truncate">
+                                ${renderPill(idx, isBull)}
+                                <span class="font-extrabold text-slate-900 truncate text-[10.5px]">${s.symbol}</span>
+                            </div>
+                            <span class="${textCol} font-black text-[11px]">${sign}${s.pchange}%</span>
+                        </div>
+                        ${renderHL(s)}
+                    </div>`;
+            }
+            const isCol5 = colType === 5;
+            const height = isCol5 ? 'h-[18.8%]' : 'h-[23.8%]';
+            const radius = isCol5 ? 'rounded-lg' : 'rounded-xl';
+            const valClass = isCol5 ? 'text-xs font-black' : 'font-black';
+            return `
+                <div class="tree-card ${theme} ${radius} px-2 py-1.5 flex flex-col justify-between font-mono ${height}"
+                     onmouseenter="handleCardMouseEnter(event, '${s.symbol}', ${isBull})" onmouseleave="handleCardMouseLeave()">
+                    <div class="flex justify-between items-center text-xs leading-none">
+                        <span class="font-black text-slate-900 truncate">${s.symbol}</span>
+                        ${renderPill(idx, isBull)}
+                    </div>
+                    <div class="flex justify-between items-center ${valClass} ${textCol}">
+                        <span>${sign}${s.pchange}%</span>
+                        <span class="text-slate-900">₹${s.ltp}</span>
+                    </div>
+                    ${renderHL(s)}
+                </div>`;
+        }
+        function renderPodium(s, rankIdx, isBull) {
+            if (!s) return '';
+            const theme = isBull ? 'bull-theme' : 'bear-theme';
+            const textCol = isBull ? 'text-emerald-700' : 'text-rose-700';
+            return `
+                <div class="tree-card ${theme} rounded-xl p-2.5 flex flex-col justify-between font-mono h-[32%] shadow-xs"
+                     onmouseenter="handleCardMouseEnter(event, '${s.symbol}', ${isBull})" onmouseleave="handleCardMouseLeave()">
+                    <div class="flex justify-between items-center leading-none">
+                        <span class="font-black text-sm text-slate-900 truncate">${s.symbol}</span>
+                        ${renderPill(rankIdx, isBull)}
+                    </div>
+                    <div class="flex justify-between items-baseline my-0.5">
+                        <span class="text-sm font-black ${textCol}">${isBull ? '+' : ''}${s.pchange}%</span>
+                        <span class="text-sm font-black text-slate-900">₹${s.ltp}</span>
+                    </div>
+                    <div class="text-[9.5px] font-bold text-slate-600 bg-white/70 px-2 py-1 rounded border border-slate-200 space-y-0.5">
+                        <div class="flex justify-between"><span class="text-slate-400">TODAY H/L:</span><span class="font-black text-slate-800">₹${s.dayHigh} / ₹${s.dayLow}</span></div>
+                        <div class="flex justify-between"><span class="text-slate-400">52W H/L:</span><span class="font-black text-slate-800">₹${s.yearHigh} / ₹${s.yearLow}</span></div>
+                    </div>
+                </div>`;
+        }
+        function renderDetailed(s, rankIdx, isBull) {
+            if (!s) return '';
+            const theme = isBull ? 'bull-theme' : 'bear-theme';
+            const textCol = isBull ? 'text-emerald-700' : 'text-rose-700';
+            const chartSvg = renderSmoothChart(s.chartPoints, isBull, 170, 36);
+            const tech = s.technicals || { rsi: 50.0, macd: 0.0 };
+            return `
+                <div class="tree-card ${theme} rounded-xl p-2.5 flex flex-col justify-between font-mono h-[32%] shadow-xs"
+                     onmouseenter="handleCardMouseEnter(event, '${s.symbol}', ${isBull})" onmouseleave="handleCardMouseLeave()">
+                    <div class="flex justify-between items-start border-b border-slate-200/90 pb-1">
+                        <div>
+                            <div class="flex items-center space-x-1.5">
+                                ${renderPill(rankIdx, isBull)}
+                                <span class="font-black text-base text-slate-900 truncate">${s.symbol}</span>
+                            </div>
+                            <div class="text-[11px] text-slate-500 font-extrabold truncate max-w-[150px]">${s.sector}</div>
+                        </div>
+                        <div class="w-36 h-9 flex items-center shrink-0 ml-1">${chartSvg}</div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-1 items-center my-0.5">
+                        <div class="flex items-baseline space-x-2">
+                            <span class="text-base font-black ${textCol}">${isBull ? '+' : ''}${s.pchange}%</span>
+                            <span class="text-sm font-black text-slate-900">₹${s.ltp}</span>
+                        </div>
+                        <div class="text-[9px] font-bold text-slate-600 bg-white/70 px-1.5 py-0.5 rounded border border-slate-200 flex flex-col justify-center">
+                            <div class="flex justify-between"><span class="text-slate-400">TODAY:</span><span class="font-black text-slate-900">₹${s.dayHigh} / ₹${s.dayLow}</span></div>
+                            <div class="flex justify-between"><span class="text-slate-400">52W:</span><span class="font-black text-slate-900">₹${s.yearHigh} / ₹${s.yearLow}</span></div>
+                        </div>
+                    </div>
+                    <div class="bg-white px-2 py-1 rounded-lg border border-slate-200 text-[10px] font-black flex justify-between items-center text-slate-800">
+                        <div><span class="text-slate-400">RSI:</span> <span>${tech.rsi}</span></div>
+                        <div class="border-x border-slate-200 px-2"><span class="text-slate-400">MACD:</span> <span class="${tech.macd >= 0 ? 'text-emerald-700' : 'text-rose-700'}">${tech.macd > 0 ? '+' : ''}${tech.macd}</span></div>
+                        <div><span class="text-slate-400">OI:</span> <span class="${s.derivatives.oi_change_pct >= 0 ? 'text-emerald-700' : 'text-rose-700'}">${formatNum(s.derivatives.open_interest)} (${s.derivatives.oi_change_pct >= 0 ? '+' : ''}${s.derivatives.oi_change_pct}%)</span></div>
+                    </div>
+                </div>`;
+        }
+        function renderUI(data) {
+            const allSectors = data.sector_rail || [];
+            const renderSectorRail = (sectors, isBull) => sectors.map(s => `
+                <div class="flex justify-between items-center px-2.5 py-1.5 rounded-lg border-2 ${isBull ? 'border-emerald-200 bg-emerald-50/80' : 'border-rose-200 bg-rose-50/80'} font-mono shrink-0">
+                    <div class="flex items-center space-x-1.5 pr-1 truncate">
+                        <span class="font-black text-xs text-slate-900 truncate">${s.sector}</span>
+                        <span class="text-[10px] text-slate-400 font-black">(${s.count})</span>
+                    </div>
+                    <span class="font-black text-xs shrink-0 ${isBull ? 'text-emerald-700' : 'text-rose-700'}">${isBull ? '+' : ''}${s.avg_change_pct.toFixed(2)}%</span>
+                </div>`).join('');
+            document.getElementById('bullSectorsContainer').innerHTML = renderSectorRail(allSectors.filter(s => s.avg_change_pct >= 0), true);
+            document.getElementById('bearSectorsContainer').innerHTML = renderSectorRail(allSectors.filter(s => s.avg_change_pct < 0), false);
+            [
+                { prefix: 'bull', isBull: true, pool: data.top_bullish || [] },
+                { prefix: 'bear', isBull: false, pool: data.top_bearish || [] }
+            ].forEach(({ prefix, isBull, pool }) => {
+                document.getElementById(`${prefix}Col8`).innerHTML = [12, 13, 14, 15, 16, 17, 18, 19].map(i => renderStockCard(pool[i], i, isBull, 8)).join('');
+                document.getElementById(`${prefix}Col5`).innerHTML = [7, 8, 9, 10, 11].map(i => renderStockCard(pool[i], i, isBull, 5)).join('');
+                document.getElementById(`${prefix}Col4`).innerHTML = [3, 4, 5, 6].map(i => renderStockCard(pool[i], i, isBull, 4)).join('');
+                document.getElementById(`${prefix}Top3Mid`).innerHTML = [0, 1, 2].map(i => renderPodium(pool[i], i, isBull)).join('');
+                document.getElementById(`${prefix}DetailedDeck`).innerHTML = [0, 1, 2].map(i => renderDetailed(pool[i], i, isBull)).join('');
+            });
+        }
+        window.addEventListener('DOMContentLoaded', loadDashboard);
+    </script>
+</body>
+
+</html>

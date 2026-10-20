@@ -6,6 +6,7 @@ from holdings_page import holdings_bp
 from mtf_page import mtf_bp
 from trade_page import trade_bp
 from delivery_page import delivery_bp
+from dashboard2_page import dashboard2_bp
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24).hex()
@@ -20,6 +21,7 @@ app.register_blueprint(holdings_bp)
 app.register_blueprint(mtf_bp)
 app.register_blueprint(trade_bp)
 app.register_blueprint(delivery_bp)
+app.register_blueprint(dashboard2_bp)
 
 UNLOCK_PAGE_HTML = """<!DOCTYPE html>
 <html lang="en">
